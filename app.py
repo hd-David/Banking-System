@@ -1,22 +1,19 @@
-from flask import *
+from flask import Flask, render_template, redirect, url_for, flash, session
+from flask_login import LoginManager, login_user
 from forms import *
 from model import *
 from decorators import *
-import os
-from flask_wtf.csrf import CSRFProtect
-from werkzeug.security import generate_password_hash
-from flask_login import login_user, LoginManager
-
-
+from config import config
 
 app = Flask(__name__)
 
-Session = dbconnect()
-#CSRFProtect(app)
 login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
-SECRET_KEY = os.urandom(64)
-app.config['SECRET_KEY'] = SECRET_KEY
+def create_app(env):
+    app.config.from_object(config[env])
+
+    Session = dbconnect()
 
 @app.route('/')
 def index():
@@ -42,7 +39,6 @@ def login():
         session['user_id'] = user.id
         return redirect(url_for('dashboard'))
     return render_template('login.html', form=form)
-
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -81,7 +77,6 @@ def register():
 
     return render_template('register.html', form=form)
 
-
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -103,7 +98,7 @@ def dashboard():
     balance = user_account.balance
 
     # Render the dashboard template with the user's information
-    return render_template('index.html', name=name, email=email, balance=balance, transactions=transactions)
+    return render_template('dashboard.html', name=name, email=email, balance=balance, transactions=transactions)
 
 
 
