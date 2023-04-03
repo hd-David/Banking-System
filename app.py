@@ -2,18 +2,46 @@ from flask import Flask, render_template, redirect, url_for, flash, session
 from flask_login import LoginManager, login_user
 from forms import *
 from model import *
+from sqlalchemy import or_
 from decorators import *
 from config import config
+from flask_wtf.csrf import CSRFProtect
+import os
+
+
+# Generate a random secret key
+secret_key = os.urandom(24)
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = secret_key
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+Session = dbconnect()
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return Session.query(Customer).get(int(user_id))
+
+@login_manager.request_loader
+def load_user_from_request(request):
+    api_key = request.args.get('api_key')
+    if api_key:
+        return User.query.filter_by(api_key=api_key).first()
+
+    session_token = request.headers.get('Authorization')
+    if session_token:
+        user = User.verify_session_token(session_token)
+        if user:
+            return user
+
+    return None
+
 
 def create_app(env):
     app.config.from_object(config[env])
 
-    Session = dbconnect()
 
 @app.route('/')
 def index():
@@ -24,21 +52,25 @@ def index():
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        # Get username or email and password from form
-        email = form.email.data
+        # Get email/username and password from form
+        identifier = form.identifier.data  # could be email or username
         password = form.password.data
 
+        # Query the database for a user with a matching email or username
+        user = Session.query(Customer).filter(or_(Customer.email == identifier, Customer.username == identifier)).first()
+
         # Check if user exists and password is correct
-        user = Session.query(Customer).filter(Customer.email == email).first()
         if user is None or not user.check_password(password):
-            flash('Invalid username or password')
+            flash('Invalid email/username or password')
             return redirect(url_for('login'))
 
         # Log the user in
         login_user(user)
         session['user_id'] = user.id
         return redirect(url_for('dashboard'))
+
     return render_template('login.html', form=form)
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -55,7 +87,7 @@ def register():
         existing_customer = Session.query(Customer).filter_by(username=form.username.data).first()
         if existing_customer:
             flash('Username already exists')
-            return redirect(url_for('register'))
+            return redirect(url_for('register'), 302)
 
         # Hash the password before storing it in the database
         hashed_password = generate_password_hash(form.password.data)
@@ -84,10 +116,20 @@ def dashboard():
     user_id = session.get('user_id')
 
     # Get the user's account information from the database
-    user_account = Session.query(Account).filter_by(user_id=user_id).first()
+    user_account = Session.query(Account).filter_by(customer_id=user_id).first()
+
+    if user_account is None:
+        return "No account found for this user"
 
     # Get the user's transaction history from the database
-    transactions = Session.query(Transaction).filter_by(account_id=user_account.id).all()
+    if current_user.is_authenticated:
+        user_accounts = current_user.accounts
+        if user_accounts:
+            transactions = Session.query(Transaction).filter_by(account_id=user_accounts[0].id).all()
+        else:
+            transactions = []
+    else:
+        transactions = []
 
     # Get the user's name and email address from the database
     user = Session.query(Customer).filter_by(id=user_id).first()
@@ -99,7 +141,6 @@ def dashboard():
 
     # Render the dashboard template with the user's information
     return render_template('dashboard.html', name=name, email=email, balance=balance, transactions=transactions)
-
 
 
 

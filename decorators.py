@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from functools import wraps
+from flask_login import current_user
+
 
 def logout_required(f):
     """

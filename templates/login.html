@@ -9,8 +9,8 @@
         <form method="POST" action="{{ url_for('login') }}">
           {{ form.hidden_tag() }}
           <div class="form-group">
-            {{ form.email.label(class="form-label") }}
-            {{ form.email(class="form-control") }}
+            {{ form.identifier.label(class="form-label") }}
+            {{ form.identifier(class="form-control") }}
           </div>
           <div class="form-group">
             {{ form.password.label(class="form-label") }}
@@ -18,9 +18,9 @@
           </div>
           <button type="submit" class="btn btn-primary btn-block mt-4">Login</button>
         </form>
+        <p>Don't have an account? <a href="{{ url_for('register') }}">Register</a></p>
       </div>
     </div>
   </div>
 </div>
 {% endblock %}
-
