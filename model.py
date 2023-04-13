@@ -54,7 +54,6 @@ class Account(Base):
         session.add(transaction)
         session.commit()
 
-
 class Transaction(Base):
     __tablename__ = 'transactions'
 

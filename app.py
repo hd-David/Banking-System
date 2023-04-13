@@ -48,7 +48,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/login', methods=['GET', 'POST'])
-@logout_required
+# @logout_required
 def login():
     form = LoginForm()
     if form.validate_on_submit():
@@ -113,7 +113,8 @@ def register():
 @login_required
 def dashboard():
     # Get the current user's ID from the session
-    user_id = session.get('user_id')
+    user_id = session.get('customer_id', 0)
+    print(user_id)
 
     # Get the user's account information from the database
     user_account = Session.query(Account).filter_by(customer_id=user_id).first()
@@ -141,7 +142,6 @@ def dashboard():
 
     # Render the dashboard template with the user's information
     return render_template('dashboard.html', name=name, email=email, balance=balance, transactions=transactions)
-
 
 
 if __name__ == '__main__':
